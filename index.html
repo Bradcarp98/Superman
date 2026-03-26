@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Superman" />
+  <meta name="theme-color" content="#0A1628" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <title>Superman</title>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+    ::-webkit-scrollbar{width:0;}
+    html,body,#root{margin:0;padding:0;background:#0A1628;overflow-x:hidden;height:100%;font-family:'Outfit',sans-serif;}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel" data-type="module">
+const { useState, useEffect, useCallback } = React;
+
+const C = {
+  red:"#DC143C",darkRed:"#A00025",blue:"#0A1628",midBlue:"#1E3A8A",
+  gold:"#FFD700",darkGold:"#B8960F",white:"#F8FAFC",gray:"#94A3B8",
+  cardBg:"rgba(30,58,138,0.15)",cardBorder:"rgba(220,20,60,0.2)",
+};
+
+const QUOTES = [
+  {text:"He who has a why to live can bear almost any how.",author:"Friedrich Nietzsche"},
+  {text:"You must be ready to burn yourself in your own flame. How could you rise anew if you have not first become ashes?",author:"Friedrich Nietzsche"},
+  {text:"The man who moves a mountain begins by carrying away small stones.",author:"Confucius"},
+  {text:"No man is free who is not master of himself.",author:"Epictetus"},
+  {text:"We suffer more often in imagination than in reality.",author:"Seneca"},
+  {text:"The happiness of your life depends upon the quality of your thoughts.",author:"Marcus Aurelius"},
+  {text:"It is not that we have a short time to live, but that we waste a great deal of it.",author:"Seneca"},
+  {text:"What stands in the way becomes the way.",author:"Marcus Aurelius"},
+  {text:"Waste no more time arguing about what a good man should be. Be one.",author:"Marcus Aurelius"},
+  {text:"Man is something that shall be overcome. What have you done to overcome him?",author:"Friedrich Nietzsche"},
+  {text:"The soul becomes dyed with the colour of its thoughts.",author:"Marcus Aurelius"},
+  {text:"It is not because things are difficult that we do not dare; it is because we do not dare that they are difficult.",author:"Seneca"},
+  {text:"Excellence is not a gift, but a skill that takes practice.",author:"Plato"},
+  {text:"We are what we repeatedly do. Excellence, then, is not an act, but a habit.",author:"Aristotle"},
+  {text:"The unexamined life is not worth living.",author:"Socrates"},
+  {text:"He who conquers himself is the mightiest warrior.",author:"Confucius"},
+  {text:"Difficulties strengthen the mind, as labor does the body.",author:"Seneca"},
+  {text:"The secret of change is to focus all of your energy not on fighting the old, but on building the new.",author:"Socrates"},
+  {text:"You have power over your mind — not outside events. Realize this, and you will find strength.",author:"Marcus Aurelius"},
+  {text:"That which does not kill us makes us stronger.",author:"Friedrich Nietzsche"},
+  {text:"First say to yourself what you would be; and then do what you have to do.",author:"Epictetus"},
+  {text:"The beginning of wisdom is the definition of terms.",author:"Socrates"},
+  {text:"Knowing yourself is the beginning of all wisdom.",author:"Aristotle"},
+  {text:"He is a wise man who does not grieve for the things which he has not, but rejoices for those which he has.",author:"Epictetus"},
+  {text:"True wisdom comes to each of us when we realize how little we understand about life, ourselves, and the world around us.",author:"Socrates"},
+  {text:"Become who you are.",author:"Friedrich Nietzsche"},
+  {text:"The best revenge is not to be like your enemy.",author:"Marcus Aurelius"},
+  {text:"Luck is what happens when preparation meets opportunity.",author:"Seneca"},
+  {text:"I am not what happened to me. I am what I choose to become.",author:"Carl Jung"},
+  {text:"The only way to do great work is to love what you do.",author:"Confucius"},
+  {text:"In the middle of difficulty lies opportunity.",author:"Epictetus"},
+];
+
+const getDailyQuote = () => {
+  const today = new Date();
+  const dayOfYear = Math.floor((today - new Date(today.getFullYear(),0,0))/86400000);
+  return QUOTES[dayOfYear % QUOTES.length];
+};
+
+const PRESET_HABITS = [
+  {id:"meals",name:"3 Meals Today",icon:"🍽️",desc:"Eat 3 proper meals",type:"daily",isPreset:true},
+  {id:"gym",name:"Gym Session",icon:"🏋️",desc:"2 sessions per week",type:"weekly",weeklyTarget:2,isPreset:true},
+  {id:"walk",name:"Walk",icon:"🚶",desc:"2 walks per week",type:"weekly",weeklyTarget:2,isPreset:true},
+  {id:"sleep",name:"Slept 7+ Hours",icon:"😴",desc:"Quality rest & recovery",type:"daily",isPreset:true},
+  {id:"no_weed",name:"No Weed Before 6:30pm",icon:"🧠",desc:"Stay sharp until evening",type:"daily",isPreset:true},
+  {id:"water",name:"1L Water",icon:"💧",desc:"Hit your hydration goal",type:"daily",isPreset:true},
+];
+
+const HELPFUL_LINKS = [
+  {id:"musclechef",name:"My Muscle Chef",desc:"Order your healthy ready-made meals. Fresh, macro-balanced and delivered to your door.",icon:"🍱",url:"https://www.mymusclechef.com",category:"Nutrition",color:"#22C55E"},
+  {id:"bodyweight",name:"Bodyweight Workouts",desc:"Free 30-minute home workouts with zero equipment. Perfect for days you can't make the gym.",icon:"💪",url:"https://www.nerdfitness.com/blog/beginner-body-weight-workout-burn-fat-build-muscle/",category:"Fitness",color:C.red},
+  {id:"meditation",name:"Guided Meditation",desc:"Free guided meditations from UCLA's Mindful Awareness Research Center. No signup required.",icon:"🧘",url:"https://www.uclahealth.org/uclamindful/free-guided-meditations",category:"Mindfulness",color:"#8B5CF6"},
+  {id:"insighttimer",name:"Insight Timer",desc:"The world's largest free meditation library. 70,000+ guided sessions, sleep music and timers.",icon:"🔔",url:"https://insighttimer.com/guided-meditations",category:"Mindfulness",color:"#F59E0B"},
+];
+
+const XP_PER_HABIT = 20;
+const LEVELS = [0,100,250,500,850,1300,1900,2600,3500,4600,6000,7800,10000,13000,17000,22000,28000,35000,44000,55000];
+
+const BADGES = [
+  {id:"first_day",name:"Origin Story",desc:"Complete your first day",icon:"⚡",condition:p=>p.daysCompleted>=1},
+  {id:"three_day",name:"Rising Hero",desc:"3-day streak",icon:"🔥",condition:p=>p.currentStreak>=3},
+  {id:"week_warrior",name:"Week Warrior",desc:"7-day streak",icon:"🛡️",condition:p=>p.currentStreak>=7},
+  {id:"two_weeks",name:"Fortress of Solitude",desc:"14-day streak",icon:"🏔️",condition:p=>p.currentStreak>=14},
+  {id:"month",name:"Man of Steel",desc:"30-day streak",icon:"🦸",condition:p=>p.currentStreak>=30},
+  {id:"perfect_day",name:"Perfect Day",desc:"Complete all habits in a day",icon:"⭐",condition:p=>p.perfectDays>=1},
+  {id:"ten_perfect",name:"Unstoppable",desc:"10 perfect days",icon:"💎",condition:p=>p.perfectDays>=10},
+  {id:"fifty_perfect",name:"Kryptonian",desc:"50 perfect days",icon:"🌟",condition:p=>p.perfectDays>=50},
+  {id:"xp_500",name:"Power Surge",desc:"Earn 500 XP",icon:"⚡",condition:p=>p.totalXP>=500},
+  {id:"xp_2000",name:"Super Strength",desc:"Earn 2,000 XP",icon:"💪",condition:p=>p.totalXP>=2000},
+  {id:"xp_5000",name:"Heat Vision",desc:"Earn 5,000 XP",icon:"👁️",condition:p=>p.totalXP>=5000},
+  {id:"level_5",name:"Taking Flight",desc:"Reach Level 5",icon:"🦅",condition:p=>p.level>=5},
+  {id:"level_10",name:"Supersonic",desc:"Reach Level 10",icon:"🚀",condition:p=>p.level>=10},
+  {id:"custom_habit",name:"Self-Aware",desc:"Create a custom habit",icon:"🧩",condition:p=>p.customHabits>=1},
+  {id:"gym_week",name:"Iron Will",desc:"Hit gym target in a week",icon:"🏋️",condition:p=>p.gymWeeksHit>=1},
+  {id:"walk_week",name:"Pathfinder",desc:"Hit walk target in a week",icon:"🥾",condition:p=>p.walkWeeksHit>=1},
+];
+
+const getToday=()=>new Date().toISOString().split("T")[0];
+const getLevel=xp=>{for(let i=LEVELS.length-1;i>=0;i--){if(xp>=LEVELS[i])return i+1}return 1};
+const getLevelProgress=xp=>{const lv=getLevel(xp);const cur=LEVELS[lv-1]||0;const next=LEVELS[lv]||LEVELS[LEVELS.length-1]+5000;return((xp-cur)/(next-cur))*100};
+const getMondayOfWeek=dateStr=>{const d=new Date(dateStr+"T12:00:00");const day=d.getDay();const diff=d.getDate()-day+(day===0?-6:1);const mon=new Date(d);mon.setDate(diff);return mon.toISOString().split("T")[0]};
+
+const getWeekDates=(offset=0)=>{
+  const dates=[];const today=new Date();const day=today.getDay();
+  const diff=today.getDate()-day+(day===0?-6:1);
+  const start=new Date(today);start.setDate(diff+offset*7);
+  for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);dates.push(d.toISOString().split("T")[0])}
+  return dates;
+};
+
+const calculateStreak=logs=>{
+  let streak=0;const today=new Date();
+  for(let i=0;i<365;i++){const d=new Date(today);d.setDate(today.getDate()-i);const key=d.toISOString().split("T")[0];
+    if(logs[key]&&Object.values(logs[key].habits||{}).some(v=>v))streak++;else if(i>0)break}
+  return streak;
+};
+
+const getWeeklyCount=(logs,habitId,dateStr)=>{
+  const monday=getMondayOfWeek(dateStr);let count=0;
+  for(let i=0;i<7;i++){const d=new Date(monday+"T12:00:00");d.setDate(d.getDate()+i);if(logs[d.toISOString().split("T")[0]]?.habits?.[habitId])count++}
+  return count;
+};
+
+const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAY_LABELS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+const getMonthCalendarDays=(year,month)=>{
+  const firstDay=new Date(year,month,1);const lastDay=new Date(year,month+1,0);
+  let startDow=firstDay.getDay()-1;if(startDow<0)startDow=6;
+  const cells=[];for(let i=0;i<startDow;i++)cells.push(null);
+  for(let d=1;d<=lastDay.getDate();d++){cells.push(`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`)}
+  return cells;
+};
+
+// localStorage helpers
+const loadData=()=>{try{const d=localStorage.getItem("superman-data");return d?JSON.parse(d):null}catch{return null}};
+const saveData=data=>{try{localStorage.setItem("superman-data",JSON.stringify(data))}catch(e){console.error(e)}};
+const DEFAULT_DATA={habits:PRESET_HABITS,logs:{},totalXP:0,earnedBadges:[]};
+
+const XPPopup=({xp,visible})=>(
+  <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:"2.5rem",fontWeight:900,color:C.gold,textShadow:`0 0 20px ${C.gold}, 0 0 40px ${C.red}`,opacity:visible?1:0,transition:"all 0.5s ease-out",pointerEvents:"none",zIndex:999,fontFamily:"'Bebas Neue'",letterSpacing:"2px"}}>+{xp} XP</div>
+);
+
+const SplashPage=({onEnter,streak,level})=>{
+  const[visible,setVisible]=useState(false);const quote=getDailyQuote();
+  const timeOfDay=new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening";
+  useEffect(()=>{setTimeout(()=>setVisible(true),100)},[]);
+  return(
+    <div style={{maxWidth:"480px",margin:"0 auto",minHeight:"100vh",minHeight:"100dvh",fontFamily:"'Outfit',sans-serif",color:C.white,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 28px",textAlign:"center",position:"relative",overflow:"hidden",background:`radial-gradient(ellipse at 50% 0%,${C.darkRed}30 0%,${C.blue} 60%)`}}>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"1px",background:`linear-gradient(90deg,transparent,${C.gold}30,transparent)`}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"1px",background:`linear-gradient(90deg,transparent,${C.red}30,transparent)`}}/>
+      <div style={{fontSize:"3rem",marginBottom:"8px",opacity:visible?1:0,transform:visible?"translateY(0) scale(1)":"translateY(-20px) scale(0.8)",transition:"all 0.8s cubic-bezier(0.34,1.56,0.64,1)"}}>🦸</div>
+      <h1 style={{fontFamily:"'Bebas Neue'",fontSize:"3.8rem",margin:"0 0 4px",letterSpacing:"8px",color:C.gold,textShadow:`0 0 40px ${C.gold}35,0 2px 10px rgba(0,0,0,0.5)`,opacity:visible?1:0,transform:visible?"translateY(0)":"translateY(-15px)",transition:"all 0.7s ease 0.2s",lineHeight:1}}>SUPERMAN</h1>
+      <div style={{width:"60px",height:"2px",borderRadius:"1px",margin:"12px 0 28px",background:`linear-gradient(90deg,transparent,${C.gold},transparent)`,opacity:visible?1:0,transition:"opacity 0.6s ease 0.4s"}}/>
+      <div style={{maxWidth:"320px",opacity:visible?1:0,transform:visible?"translateY(0)":"translateY(15px)",transition:"all 0.8s ease 0.5s"}}>
+        <p style={{fontSize:"1.05rem",fontWeight:300,lineHeight:1.65,color:"rgba(248,250,252,0.9)",margin:"0 0 16px",fontStyle:"italic",letterSpacing:"0.3px"}}>"{quote.text}"</p>
+        <p style={{fontSize:"0.7rem",letterSpacing:"3px",color:C.gold,fontFamily:"'Bebas Neue'",margin:0}}>— {quote.author.toUpperCase()}</p>
+      </div>
+      {(streak>0||level>1)&&(
+        <div style={{display:"flex",gap:"12px",marginTop:"32px",opacity:visible?1:0,transition:"opacity 0.6s ease 0.8s",flexWrap:"wrap",justifyContent:"center"}}>
+          {streak>0&&<div style={{display:"flex",alignItems:"center",gap:"6px",background:"rgba(255,255,255,0.04)",border:`1px solid ${C.cardBorder}`,borderRadius:"20px",padding:"6px 14px"}}><span style={{fontSize:"0.9rem"}}>🔥</span><span style={{fontFamily:"'Bebas Neue'",fontSize:"0.85rem",color:C.gold,letterSpacing:"1px"}}>{streak} DAY STREAK</span></div>}
+          {level>1&&<div style={{display:"flex",alignItems:"center",gap:"6px",background:"rgba(255,255,255,0.04)",border:`1px solid ${C.cardBorder}`,borderRadius:"20px",padding:"6px 14px"}}><span style={{fontSize:"0.9rem"}}>⚡</span><span style={{fontFamily:"'Bebas Neue'",fontSize:"0.85rem",color:C.white,letterSpacing:"1px"}}>LEVEL {level}</span></div>}
+        </div>
+      )}
+      <button onClick={onEnter} style={{marginTop:"40px",fontFamily:"'Bebas Neue'",fontSize:"1.1rem",letterSpacing:"4px",padding:"14px 48px",border:`1px solid ${C.gold}40`,borderRadius:"50px",cursor:"pointer",background:"transparent",color:C.gold,opacity:visible?1:0,transform:visible?"translateY(0)":"translateY(10px)",transition:"all 0.6s ease 0.9s",boxShadow:`0 0 30px ${C.gold}10`}}>
+        BEGIN YOUR {timeOfDay.toUpperCase()}
+      </button>
+      <div style={{position:"absolute",bottom:"28px",fontSize:"0.6rem",letterSpacing:"3px",color:"rgba(148,163,184,0.4)",fontFamily:"'Bebas Neue'"}}>
+        {new Date().toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"}).toUpperCase()}
+      </div>
+    </div>
+  );
+};
+
+const OnboardingPage=({onStart})=>(
+  <div style={{maxWidth:"480px",margin:"0 auto",minHeight:"100vh",minHeight:"100dvh",fontFamily:"'Outfit',sans-serif",color:C.white,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px",textAlign:"center",background:`linear-gradient(170deg,${C.blue} 0%,#0F172A 50%,${C.darkRed}22 100%)`}}>
+    <div style={{fontSize:"4.5rem",marginBottom:"12px",animation:"pulse 2s infinite"}}>🦸</div>
+    <h1 style={{fontFamily:"'Bebas Neue'",fontSize:"3.2rem",margin:"0 0 6px",letterSpacing:"6px",color:C.gold,textShadow:`0 0 30px ${C.gold}40`}}>SUPERMAN</h1>
+    <p style={{fontSize:"1rem",color:C.gray,lineHeight:1.5,margin:"0 0 24px",fontWeight:300}}>Your journey to becoming<br/>extraordinary starts now.</p>
+    <div style={{width:"100%",maxWidth:"340px",marginBottom:"28px",textAlign:"left"}}>
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"3px",color:C.red,marginBottom:"10px",textAlign:"center"}}>YOUR MISSIONS</div>
+      {PRESET_HABITS.map(h=>(
+        <div key={h.id} style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 12px",borderRadius:"10px",background:"rgba(255,255,255,0.04)",border:`1px solid ${C.cardBorder}`,marginBottom:"6px"}}>
+          <span style={{fontSize:"1.2rem"}}>{h.icon}</span>
+          <div style={{flex:1}}><div style={{fontWeight:600,fontSize:"0.85rem"}}>{h.name}</div><div style={{fontSize:"0.7rem",color:C.gray}}>{h.desc}</div></div>
+          <span style={{fontSize:"0.5rem",letterSpacing:"1px",color:C.gold,fontFamily:"'Bebas Neue'",background:"rgba(255,215,0,0.1)",padding:"2px 8px",borderRadius:"4px",flexShrink:0}}>{h.type==="weekly"?"WEEKLY":"DAILY"}</span>
+        </div>
+      ))}
+    </div>
+    <button onClick={onStart} style={{fontFamily:"'Bebas Neue'",fontSize:"1.2rem",letterSpacing:"3px",padding:"14px 44px",background:`linear-gradient(135deg,${C.red},${C.darkRed})`,color:C.white,border:"none",borderRadius:"12px",cursor:"pointer",boxShadow:`0 4px 20px ${C.red}60`}}>BEGIN YOUR ORIGIN STORY</button>
+  </div>
+);
+
+const LinksTab=()=>{
+  const grouped={};HELPFUL_LINKS.forEach(l=>{if(!grouped[l.category])grouped[l.category]=[];grouped[l.category].push(l)});
+  return(
+    <div style={{animation:"fadeInUp 0.3s ease"}}>
+      <h2 style={st.pageTitle}>HELPFUL LINKS</h2>
+      <p style={{textAlign:"center",fontSize:"0.7rem",color:C.gray,margin:"0 0 20px",lineHeight:1.5}}>Quick access to tools & resources<br/>to help you hit your goals.</p>
+      {Object.entries(grouped).map(([cat,links])=>(
+        <div key={cat} style={{marginBottom:"16px"}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:"0.75rem",letterSpacing:"3px",color:C.red,marginBottom:"8px"}}>{cat.toUpperCase()}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+            {links.map(link=>(
+              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:"14px",padding:"14px 16px",borderRadius:"12px",background:C.cardBg,border:`1px solid ${C.cardBorder}`,textDecoration:"none",color:C.white,cursor:"pointer"}}>
+                <div style={{width:"48px",height:"48px",borderRadius:"12px",background:`${link.color}15`,border:`1px solid ${link.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>{link.icon}</div>
+                <div style={{flex:1,minWidth:0}}><div style={{fontSize:"0.9rem",fontWeight:600,marginBottom:"2px"}}>{link.name}</div><div style={{fontSize:"0.65rem",color:C.gray,lineHeight:1.4}}>{link.desc}</div></div>
+                <div style={{fontSize:"1.1rem",color:C.gray,flexShrink:0}}>→</div>
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div style={{marginTop:"24px",padding:"16px",borderRadius:"12px",background:"rgba(255,215,0,0.04)",border:`1px solid ${C.gold}20`,textAlign:"center"}}>
+        <div style={{fontSize:"0.9rem",marginBottom:"4px"}}>💡</div>
+        <div style={{fontSize:"0.7rem",color:C.gray,lineHeight:1.5}}>These resources are here to support your journey.<br/>You've got everything you need, Superman.</div>
+      </div>
+    </div>
+  );
+};
+
+const MonthlyCalendar=({logs,totalHabits})=>{
+  const today=getToday();const todayDate=new Date();
+  const[calYear,setCalYear]=useState(todayDate.getFullYear());
+  const[calMonth,setCalMonth]=useState(todayDate.getMonth());
+  const cells=getMonthCalendarDays(calYear,calMonth);
+  const canGoBack=calYear>2026||(calYear===2026&&calMonth>2);
+  const isCurrentMonth=calYear===todayDate.getFullYear()&&calMonth===todayDate.getMonth();
+  const prevMonth=()=>{if(!canGoBack)return;if(calMonth===0){setCalYear(y=>y-1);setCalMonth(11)}else setCalMonth(m=>m-1)};
+  const nextMonth=()=>{if(isCurrentMonth)return;if(calMonth===11){setCalYear(y=>y+1);setCalMonth(0)}else setCalMonth(m=>m+1)};
+  let activeDays=0,perfectDaysInMonth=0,totalCompleted=0;
+  cells.filter(c=>c!==null).forEach(dateStr=>{const log=logs[dateStr];if(log){const ct=Object.values(log.habits||{}).filter(v=>v).length;if(ct>0)activeDays++;if(ct===totalHabits&&totalHabits>0)perfectDaysInMonth++;totalCompleted+=ct}});
+
+  return(
+    <div style={{animation:"fadeInUp 0.3s ease"}}>
+      <h2 style={st.pageTitle}>CALENDAR</h2>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"16px",marginBottom:"20px"}}>
+        <button onClick={prevMonth} style={{...st.wkBtn,opacity:canGoBack?1:0.25,cursor:canGoBack?"pointer":"default"}}>◀</button>
+        <div style={{textAlign:"center",minWidth:"160px"}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:"1.4rem",letterSpacing:"3px",color:C.white}}>{MONTH_NAMES[calMonth].toUpperCase()}</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:"0.75rem",letterSpacing:"2px",color:C.gray}}>{calYear}</div>
+        </div>
+        <button onClick={nextMonth} style={{...st.wkBtn,opacity:isCurrentMonth?0.25:1,cursor:isCurrentMonth?"default":"pointer"}}>▶</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px",marginBottom:"4px",padding:"0 2px"}}>
+        {DAY_LABELS.map(d=><div key={d} style={{textAlign:"center",fontSize:"0.55rem",fontFamily:"'Bebas Neue'",letterSpacing:"1.5px",color:C.gray,padding:"4px 0"}}>{d.toUpperCase()}</div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px",padding:"0 2px",marginBottom:"20px"}}>
+        {cells.map((dateStr,idx)=>{
+          if(dateStr===null)return <div key={`e-${idx}`}/>;
+          const log=logs[dateStr];const completed=log?Object.values(log.habits||{}).filter(v=>v).length:0;
+          const pct=totalHabits>0?completed/totalHabits:0;const isToday=dateStr===today;const isFuture=dateStr>today;
+          const dayNum=new Date(dateStr+"T12:00:00").getDate();
+          const bg=isFuture?"rgba(255,255,255,0.02)":pct===0?"rgba(255,255,255,0.04)":pct<0.4?"rgba(220,20,60,0.2)":pct<0.7?"rgba(220,20,60,0.4)":pct<1?"rgba(220,20,60,0.65)":C.gold;
+          return(
+            <div key={dateStr} title={isFuture?"":dateStr+": "+completed+"/"+totalHabits} style={{aspectRatio:"1",borderRadius:"8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:bg,border:isToday?`2px solid ${C.gold}`:"1px solid rgba(255,255,255,0.04)",boxShadow:pct===1?`0 0 8px ${C.gold}40`:isToday?`0 0 8px ${C.gold}25`:"none",opacity:isFuture?0.3:1,transition:"all 0.2s"}}>
+              <span style={{fontSize:"0.75rem",fontWeight:isToday?700:500,color:pct===1?C.blue:isFuture?"rgba(255,255,255,0.2)":C.white,fontFamily:"'Outfit'"}}>{dayNum}</span>
+              {!isFuture&&pct>0&&pct<1&&<span style={{fontSize:"0.45rem",color:C.gray,marginTop:"1px"}}>{completed}/{totalHabits}</span>}
+              {pct===1&&!isFuture&&<span style={{fontSize:"0.5rem",marginTop:"1px"}}>⭐</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",justifyContent:"center",gap:"10px",marginBottom:"20px",flexWrap:"wrap"}}>
+        {[["rgba(255,255,255,0.04)","None"],["rgba(220,20,60,0.2)","Some"],["rgba(220,20,60,0.4)","Half"],["rgba(220,20,60,0.65)","Most"],[C.gold,"All ⭐"]].map(([bg,label])=>(
+          <span key={label} style={{display:"flex",alignItems:"center",gap:"4px",fontSize:"0.6rem",color:C.gray}}><span style={{width:"12px",height:"12px",borderRadius:"3px",background:bg,display:"inline-block"}}/> {label}</span>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}}>
+        {[{icon:"📅",val:activeDays,lbl:"ACTIVE DAYS"},{icon:"⭐",val:perfectDaysInMonth,lbl:"PERFECT DAYS",gold:perfectDaysInMonth>0},{icon:"✅",val:totalCompleted,lbl:"HABITS DONE"}].map((s,i)=>(
+          <div key={i} style={{background:C.cardBg,borderRadius:"10px",padding:"12px 8px",border:`1px solid ${C.cardBorder}`,textAlign:"center"}}>
+            <div style={{fontSize:"1.1rem"}}>{s.icon}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:"1.4rem",color:s.gold?C.gold:C.white,margin:"2px 0 1px"}}>{s.val}</div><div style={{fontSize:"0.5rem",letterSpacing:"1.5px",color:C.gray}}>{s.lbl}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+function SupermanApp(){
+  const[data,setData]=useState(DEFAULT_DATA);
+  const[loaded,setLoaded]=useState(false);
+  const[screen,setScreen]=useState("loading");
+  const[activeTab,setActiveTab]=useState("daily");
+  const[showAddHabit,setShowAddHabit]=useState(false);
+  const[newHabitName,setNewHabitName]=useState("");
+  const[newHabitIcon,setNewHabitIcon]=useState("✨");
+  const[xpPopup,setXpPopup]=useState({visible:false,amount:0});
+  const[newBadge,setNewBadge]=useState(null);
+  const[weekOffset,setWeekOffset]=useState(0);
+
+  useEffect(()=>{
+    const saved=loadData();
+    if(saved){
+      const existingIds=saved.habits.map(h=>h.id);
+      const missing=PRESET_HABITS.filter(p=>!existingIds.includes(p.id));
+      if(missing.length>0)saved.habits=[...saved.habits.filter(h=>!h.isPreset),...PRESET_HABITS];
+      setData(saved);setScreen("splash");
+    }else{setScreen("onboarding")}
+    setLoaded(true);
+  },[]);
+
+  useEffect(()=>{if(loaded&&screen==="app")saveData(data)},[data,loaded,screen]);
+
+  const today=getToday();
+  const todayLog=data.logs[today]||{habits:{}};
+  const currentStreak=calculateStreak(data.logs);
+  const level=getLevel(data.totalXP);
+  const levelProgress=getLevelProgress(data.totalXP);
+  const dailyHabits=data.habits.filter(h=>h.type!=="weekly");
+  const weeklyHabits=data.habits.filter(h=>h.type==="weekly");
+
+  const perfectDays=Object.values(data.logs).filter(log=>{const c=Object.values(log.habits||{}).filter(v=>v).length;return c===data.habits.length&&data.habits.length>0}).length;
+
+  const countWeeksHit=(habitId,target)=>{let count=0;const checked=new Set();Object.keys(data.logs).forEach(dateStr=>{const mon=getMondayOfWeek(dateStr);if(!checked.has(mon)){checked.add(mon);if(getWeeklyCount(data.logs,habitId,dateStr)>=target)count++}});return count};
+
+  const profileStats={totalXP:data.totalXP,currentStreak,level,perfectDays,daysCompleted:Object.keys(data.logs).filter(k=>Object.values(data.logs[k]?.habits||{}).some(v=>v)).length,customHabits:data.habits.filter(h=>!h.isPreset).length,gymWeeksHit:countWeeksHit("gym",2),walkWeeksHit:countWeeksHit("walk",2)};
+
+  const checkBadges=useCallback(stats=>{for(const badge of BADGES){if(!data.earnedBadges.includes(badge.id)&&badge.condition(stats)){setData(prev=>({...prev,earnedBadges:[...prev.earnedBadges,badge.id]}));setNewBadge(badge);setTimeout(()=>setNewBadge(null),3000);return}}},[data.earnedBadges]);
+  useEffect(()=>{if(loaded&&screen==="app")checkBadges(profileStats)},[data.totalXP,data.logs,loaded,screen]);
+
+  const toggleHabit=habitId=>{
+    const wasChecked=todayLog.habits[habitId];const xpChange=wasChecked?-XP_PER_HABIT:XP_PER_HABIT;
+    if(!wasChecked){setXpPopup({visible:true,amount:XP_PER_HABIT});setTimeout(()=>setXpPopup({visible:false,amount:0}),1200)}
+    setData(prev=>{const newLogs={...prev.logs};newLogs[today]={...todayLog,habits:{...todayLog.habits,[habitId]:!wasChecked}};return{...prev,logs:newLogs,totalXP:Math.max(0,prev.totalXP+xpChange)}});
+  };
+
+  const addCustomHabit=()=>{if(!newHabitName.trim())return;setData(prev=>({...prev,habits:[...prev.habits,{id:`custom_${Date.now()}`,name:newHabitName.trim(),icon:newHabitIcon,desc:"Custom goal",type:"daily",isPreset:false}]}));setNewHabitName("");setNewHabitIcon("✨");setShowAddHabit(false)};
+  const removeCustomHabit=id=>setData(prev=>({...prev,habits:prev.habits.filter(h=>h.id!==id)}));
+
+  const completedToday=Object.values(todayLog.habits).filter(v=>v).length;
+  const totalHabits=data.habits.length;
+  const dayPercent=totalHabits>0?(completedToday/totalHabits)*100:0;
+
+  if(screen==="loading")return null;
+  if(screen==="onboarding")return <OnboardingPage onStart={()=>setScreen("splash")}/>;
+  if(screen==="splash")return <SplashPage onEnter={()=>setScreen("app")} streak={currentStreak} level={level}/>;
+
+  const NAV_TABS=[{id:"daily",icon:"🦸",label:"TODAY"},{id:"stats",icon:"📊",label:"STATS"},{id:"calendar",icon:"📅",label:"CAL"},{id:"badges",icon:"🏅",label:"BADGES"},{id:"links",icon:"🔗",label:"LINKS"}];
+
+  return(
+    <div style={st.app}>
+      <XPPopup xp={xpPopup.amount} visible={xpPopup.visible}/>
+      {newBadge&&<div style={st.badgeNotif}><div style={{fontSize:"2rem"}}>{newBadge.icon}</div><div><div style={{fontSize:"0.7rem",color:C.gold,letterSpacing:"2px",fontFamily:"'Bebas Neue'"}}>BADGE UNLOCKED</div><div style={{fontSize:"1rem",fontWeight:700}}>{newBadge.name}</div></div></div>}
+
+      <header style={st.header}>
+        <div style={st.headerTop}>
+          <div><div style={st.greeting}>{new Date().getHours()<12?"GOOD MORNING":new Date().getHours()<17?"GOOD AFTERNOON":"GOOD EVENING"}</div><h1 style={st.heroName}>SUPERMAN</h1></div>
+          <div style={st.streakBox}><span style={{fontSize:"1.2rem"}}>🔥</span><span style={st.streakNum}>{currentStreak}</span><span style={st.streakLbl}>DAY{currentStreak!==1?"S":""}</span></div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"5px"}}><span style={st.levelText}>LEVEL {level}</span><span style={st.xpText}>{data.totalXP} XP</span></div>
+        <div style={st.progOuter}><div style={{...st.progInner,width:`${levelProgress}%`}}/></div>
+        <div style={st.levelNext}>{LEVELS[level]?`${LEVELS[level]-data.totalXP} XP to Level ${level+1}`:"MAX LEVEL"}</div>
+      </header>
+
+      <main style={st.main}>
+        {activeTab==="daily"&&(
+          <div style={{animation:"fadeInUp 0.3s ease"}}>
+            <div style={st.ringWrap}>
+              <svg width="110" height="110" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/><circle cx="60" cy="60" r="52" fill="none" stroke={dayPercent===100?C.gold:C.red} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${dayPercent*3.267} 326.7`} transform="rotate(-90 60 60)" style={{transition:"stroke-dasharray 0.6s ease,stroke 0.3s ease",filter:dayPercent===100?`drop-shadow(0 0 8px ${C.gold})`:"none"}}/><text x="60" y="55" textAnchor="middle" fill={C.white} fontSize="24" fontWeight="700" fontFamily="'Bebas Neue'">{completedToday}/{totalHabits}</text><text x="60" y="72" textAnchor="middle" fill={C.gray} fontSize="10" fontFamily="'Outfit'">TODAY</text></svg>
+              {dayPercent===100&&<div style={st.perfectText}>⭐ PERFECT DAY ⭐</div>}
+            </div>
+            <div style={st.secLabel}>DAILY MISSIONS</div>
+            <div style={st.hList}>
+              {dailyHabits.map(habit=>{const checked=todayLog.habits[habit.id]||false;return(
+                <div key={habit.id} onClick={()=>toggleHabit(habit.id)} style={{...st.hCard,borderColor:checked?C.gold:C.cardBorder,background:checked?"rgba(255,215,0,0.07)":C.cardBg}}>
+                  <div style={st.hLeft}><span style={{fontSize:"1.5rem"}}>{habit.icon}</span><div><div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s"}}>{habit.name}</div><div style={{fontSize:"0.65rem",color:C.gray,marginTop:"1px"}}>{habit.desc}</div></div></div>
+                  <div style={st.hRight}><div style={st.xpTag}>+{XP_PER_HABIT}</div><div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div></div>
+                  {!habit.isPreset&&<button onClick={e=>{e.stopPropagation();removeCustomHabit(habit.id)}} style={st.rmBtn}>×</button>}
+                </div>
+              )})}
+            </div>
+            <div style={st.secLabel}>WEEKLY MISSIONS</div>
+            <div style={st.hList}>
+              {weeklyHabits.map(habit=>{const checked=todayLog.habits[habit.id]||false;const weekCount=getWeeklyCount(data.logs,habit.id,today);const target=habit.weeklyTarget||2;const hit=weekCount>=target;return(
+                <div key={habit.id} onClick={()=>toggleHabit(habit.id)} style={{...st.hCard,borderColor:checked?C.gold:hit?"rgba(255,215,0,0.4)":C.cardBorder,background:checked?"rgba(255,215,0,0.07)":hit?"rgba(255,215,0,0.03)":C.cardBg}}>
+                  <div style={st.hLeft}><span style={{fontSize:"1.5rem"}}>{habit.icon}</span><div>
+                    <div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s"}}>{habit.name}</div>
+                    <div style={{fontSize:"0.65rem",color:C.gray,marginTop:"1px"}}>{habit.desc}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:"4px",marginTop:"5px"}}>
+                      {Array.from({length:target}).map((_,i)=><div key={i} style={{width:"10px",height:"10px",borderRadius:"50%",background:i<weekCount?C.gold:"rgba(255,255,255,0.08)",border:`1.5px solid ${i<weekCount?C.gold:"rgba(255,255,255,0.15)"}`,transition:"all 0.3s",boxShadow:i<weekCount?`0 0 4px ${C.gold}60`:"none"}}/>)}
+                      <span style={{fontSize:"0.6rem",color:hit?C.gold:C.gray,marginLeft:"4px",fontWeight:600}}>{weekCount}/{target} this week {hit?"✓":""}</span>
+                    </div>
+                  </div></div>
+                  <div style={st.hRight}><div style={st.xpTag}>+{XP_PER_HABIT}</div><div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div></div>
+                </div>
+              )})}
+            </div>
+            {!showAddHabit?<button onClick={()=>setShowAddHabit(true)} style={st.addBtn}>+ ADD CUSTOM HABIT</button>:(
+              <div style={st.addForm}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>{["✨","🎯","📚","🏃","🧘","💊","🎵","🖊️","🌱","❤️"].map(e=><button key={e} onClick={()=>setNewHabitIcon(e)} style={{width:"34px",height:"34px",borderRadius:"8px",background:"rgba(255,255,255,0.05)",fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",border:newHabitIcon===e?`2px solid ${C.gold}`:"2px solid transparent"}}>{e}</button>)}</div>
+                <input value={newHabitName} onChange={e=>setNewHabitName(e.target.value)} placeholder="Habit name..." maxLength={30} onKeyDown={e=>e.key==="Enter"&&addCustomHabit()} style={{padding:"10px 12px",borderRadius:"8px",border:`1px solid ${C.cardBorder}`,background:"rgba(255,255,255,0.05)",color:C.white,fontSize:"0.85rem",fontFamily:"'Outfit'",outline:"none"}}/>
+                <div style={{display:"flex",gap:"8px"}}><button onClick={addCustomHabit} style={{flex:1,padding:"10px",borderRadius:"8px",border:"none",background:C.red,color:"#fff",fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"2px",cursor:"pointer"}}>ADD</button><button onClick={()=>{setShowAddHabit(false);setNewHabitName("")}} style={{flex:1,padding:"10px",borderRadius:"8px",border:`1px solid ${C.gray}40`,background:"transparent",color:C.gray,fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"2px",cursor:"pointer"}}>CANCEL</button></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab==="stats"&&(
+          <div style={{animation:"fadeInUp 0.3s ease"}}>
+            <h2 style={st.pageTitle}>WEEKLY REPORT</h2>
+            <div style={{display:"flex",gap:"6px",justifyContent:"center",marginBottom:"14px"}}>
+              <button onClick={()=>setWeekOffset(w=>w-1)} style={st.wkBtn}>◀</button>
+              <span style={st.wkText}>{weekOffset===0?"THIS WEEK":weekOffset===-1?"LAST WEEK":`${Math.abs(weekOffset)} WEEKS AGO`}</span>
+              <button onClick={()=>setWeekOffset(w=>Math.min(0,w+1))} style={{...st.wkBtn,opacity:weekOffset>=0?0.3:1}}>▶</button>
+            </div>
+            <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
+              {weeklyHabits.map(h=>{const wDates=getWeekDates(weekOffset);let ct=0;wDates.forEach(d=>{if(data.logs[d]?.habits?.[h.id])ct++});const target=h.weeklyTarget||2;const hit=ct>=target;return(
+                <div key={h.id} style={{flex:1,background:hit?"rgba(255,215,0,0.06)":C.cardBg,borderRadius:"10px",padding:"12px 8px",border:`1px solid ${hit?C.gold:C.cardBorder}`,textAlign:"center",transition:"all 0.3s"}}>
+                  <span style={{fontSize:"1.3rem"}}>{h.icon}</span><div style={{fontFamily:"'Bebas Neue'",fontSize:"1.4rem",color:hit?C.gold:C.white}}>{ct}/{target}</div>
+                  <div style={{fontSize:"0.55rem",color:C.gray,letterSpacing:"1px",textTransform:"uppercase"}}>{h.name}</div>
+                  {hit&&<div style={{fontSize:"0.55rem",color:C.gold,fontWeight:700,marginTop:"2px"}}>TARGET HIT ✓</div>}
+                </div>
+              )})}
+            </div>
+            <div style={{display:"flex",gap:"5px",justifyContent:"space-between",marginBottom:"20px",padding:"14px",background:"rgba(255,255,255,0.02)",borderRadius:"12px"}}>
+              {getWeekDates(weekOffset).map(date=>{const log=data.logs[date];const completed=log?Object.values(log.habits||{}).filter(v=>v).length:0;const pct=totalHabits>0?(completed/totalHabits)*100:0;const isToday=date===today;const dayName=new Date(date+"T12:00:00").toLocaleDateString("en",{weekday:"short"}).toUpperCase();return(
+                <div key={date} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",flex:1}}>
+                  <div style={{fontSize:"0.65rem",color:C.gray,fontWeight:600}}>{completed}</div>
+                  <div style={{width:"100%",height:"70px",borderRadius:"4px",background:"rgba(255,255,255,0.04)",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"flex-end"}}><div style={{width:"100%",height:`${Math.max(pct,3)}%`,borderRadius:"4px",transition:"height 0.4s ease",background:pct===100?`linear-gradient(to top,${C.darkGold},${C.gold})`:`linear-gradient(to top,${C.darkRed},${C.red})`}}/></div>
+                  <div style={{fontSize:"0.6rem",fontWeight:600,letterSpacing:"1px",color:isToday?C.gold:C.gray}}>{dayName}</div>
+                </div>
+              )})}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}}>
+              {[{label:"TOTAL XP",value:data.totalXP,icon:"⚡"},{label:"LEVEL",value:level,icon:"🦸"},{label:"STREAK",value:`${currentStreak}d`,icon:"🔥"},{label:"PERFECT DAYS",value:perfectDays,icon:"⭐"},{label:"DAYS ACTIVE",value:profileStats.daysCompleted,icon:"📅"},{label:"BADGES",value:`${data.earnedBadges.length}/${BADGES.length}`,icon:"🏅"}].map((s,i)=>(
+                <div key={i} style={{background:C.cardBg,borderRadius:"10px",padding:"12px 8px",border:`1px solid ${C.cardBorder}`,textAlign:"center"}}><div style={{fontSize:"1.3rem"}}>{s.icon}</div><div style={{fontFamily:"'Bebas Neue'",fontSize:"1.4rem",color:C.white,margin:"3px 0 1px"}}>{s.value}</div><div style={{fontSize:"0.5rem",letterSpacing:"1.5px",color:C.gray}}>{s.label}</div></div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab==="calendar"&&<MonthlyCalendar logs={data.logs} totalHabits={totalHabits}/>}
+
+        {activeTab==="badges"&&(
+          <div style={{animation:"fadeInUp 0.3s ease"}}>
+            <h2 style={st.pageTitle}>ACHIEVEMENTS</h2>
+            <div style={{textAlign:"center",fontSize:"0.75rem",color:C.gray,marginBottom:"16px",letterSpacing:"2px",fontFamily:"'Bebas Neue'"}}>{data.earnedBadges.length} / {BADGES.length} UNLOCKED</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
+              {BADGES.map(badge=>{const earned=data.earnedBadges.includes(badge.id);return(
+                <div key={badge.id} style={{borderRadius:"12px",padding:"14px 10px",border:`1px solid ${earned?C.gold:"rgba(255,255,255,0.05)"}`,textAlign:"center",opacity:earned?1:0.35,background:earned?"rgba(255,215,0,0.06)":"rgba(255,255,255,0.02)",transition:"all 0.3s"}}>
+                  <div style={{fontSize:"1.8rem",filter:earned?"none":"grayscale(1)"}}>{badge.icon}</div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"1px",color:earned?C.gold:C.gray,margin:"4px 0 2px"}}>{badge.name}</div>
+                  <div style={{fontSize:"0.6rem",color:C.gray}}>{badge.desc}</div>
+                  {earned&&<div style={{fontSize:"0.55rem",color:C.gold,marginTop:"4px",letterSpacing:"1px",fontWeight:600}}>EARNED ✓</div>}
+                </div>
+              )})}
+            </div>
+          </div>
+        )}
+
+        {activeTab==="links"&&<LinksTab/>}
+      </main>
+
+      <nav style={st.nav}>
+        {NAV_TABS.map(tab=>(
+          <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:"1px",background:"none",border:"none",cursor:"pointer",padding:"6px 0",transition:"all 0.2s",color:activeTab===tab.id?C.gold:C.gray,borderTop:activeTab===tab.id?`2px solid ${C.gold}`:"2px solid transparent"}}>
+            <span style={{fontSize:"1.15rem"}}>{tab.icon}</span>
+            <span style={{fontSize:"0.5rem",fontFamily:"'Bebas Neue'",letterSpacing:"1.5px"}}>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+const st={
+  app:{maxWidth:"480px",margin:"0 auto",minHeight:"100vh",minHeight:"100dvh",background:C.blue,fontFamily:"'Outfit',sans-serif",color:C.white,display:"flex",flexDirection:"column"},
+  header:{padding:"18px 18px 14px",background:`linear-gradient(180deg,${C.darkRed}25 0%,transparent 100%)`,borderBottom:`1px solid ${C.cardBorder}`},
+  headerTop:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"14px"},
+  greeting:{fontSize:"0.6rem",letterSpacing:"3px",color:C.gray,fontWeight:500,marginBottom:"1px"},
+  heroName:{fontFamily:"'Bebas Neue'",fontSize:"1.9rem",margin:0,letterSpacing:"4px",color:C.gold,textShadow:`0 0 20px ${C.gold}30`},
+  streakBox:{display:"flex",flexDirection:"column",alignItems:"center",background:"rgba(255,255,255,0.04)",borderRadius:"12px",padding:"7px 12px",border:`1px solid ${C.cardBorder}`},
+  streakNum:{fontFamily:"'Bebas Neue'",fontSize:"1.4rem",color:C.gold,lineHeight:1},
+  streakLbl:{fontSize:"0.5rem",letterSpacing:"1px",color:C.gray},
+  levelText:{fontFamily:"'Bebas Neue'",fontSize:"0.8rem",letterSpacing:"2px",color:C.red},
+  xpText:{fontSize:"0.7rem",color:C.gold,fontWeight:600},
+  progOuter:{height:"5px",borderRadius:"3px",background:"rgba(255,255,255,0.08)",overflow:"hidden"},
+  progInner:{height:"100%",borderRadius:"3px",background:`linear-gradient(90deg,${C.red},${C.gold})`,transition:"width 0.6s ease",boxShadow:`0 0 8px ${C.red}60`},
+  levelNext:{fontSize:"0.6rem",color:C.gray,textAlign:"right",marginTop:"3px"},
+  main:{flex:1,overflowY:"auto",padding:"16px 18px 90px"},
+  pageTitle:{fontFamily:"'Bebas Neue'",fontSize:"1.3rem",letterSpacing:"3px",color:C.gold,textAlign:"center",margin:"0 0 10px"},
+  ringWrap:{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:"16px"},
+  perfectText:{fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"3px",color:C.gold,marginTop:"6px",animation:"pulse 1.5s infinite",textShadow:`0 0 10px ${C.gold}50`},
+  secLabel:{fontFamily:"'Bebas Neue'",fontSize:"0.8rem",letterSpacing:"3px",color:C.red,marginBottom:"8px",marginTop:"4px"},
+  hList:{display:"flex",flexDirection:"column",gap:"8px",marginBottom:"16px"},
+  hCard:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderRadius:"12px",border:"1px solid",cursor:"pointer",transition:"all 0.2s",position:"relative"},
+  hLeft:{display:"flex",alignItems:"center",gap:"10px",flex:1,minWidth:0},
+  hRight:{display:"flex",alignItems:"center",gap:"10px",flexShrink:0},
+  xpTag:{fontSize:"0.6rem",color:C.gold,fontWeight:700,background:"rgba(255,215,0,0.1)",padding:"2px 6px",borderRadius:"4px",fontFamily:"'Bebas Neue'",letterSpacing:"1px"},
+  chk:{width:"26px",height:"26px",borderRadius:"8px",border:"2px solid",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s",flexShrink:0},
+  rmBtn:{position:"absolute",top:"-6px",right:"-6px",width:"18px",height:"18px",borderRadius:"50%",background:C.darkRed,color:"#fff",border:"none",fontSize:"0.75rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1},
+  addBtn:{width:"100%",padding:"12px",borderRadius:"12px",border:`1px dashed ${C.gray}40`,background:"transparent",color:C.gray,fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"2px",cursor:"pointer"},
+  addForm:{background:C.cardBg,borderRadius:"12px",padding:"14px",border:`1px solid ${C.cardBorder}`,display:"flex",flexDirection:"column",gap:"10px"},
+  wkBtn:{background:"rgba(255,255,255,0.05)",border:"none",color:C.white,borderRadius:"8px",padding:"5px 10px",cursor:"pointer",fontSize:"0.8rem"},
+  wkText:{fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"2px",color:C.gray,display:"flex",alignItems:"center"},
+  badgeNotif:{position:"fixed",top:"16px",left:"50%",transform:"translateX(-50%)",background:`linear-gradient(135deg,${C.darkRed},${C.midBlue})`,border:`1px solid ${C.gold}`,borderRadius:"14px",padding:"10px 18px",display:"flex",alignItems:"center",gap:"10px",zIndex:1000,animation:"fadeInUp 0.4s ease",boxShadow:`0 8px 30px ${C.blue}CC`,maxWidth:"90vw"},
+  nav:{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"480px",display:"flex",background:`${C.blue}F5`,backdropFilter:"blur(12px)",borderTop:`1px solid ${C.cardBorder}`,padding:"4px 0 env(safe-area-inset-bottom,5px)"},
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<SupermanApp/>);
+
+// Register service worker
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./sw.js").then(r=>console.log("SW registered")).catch(e=>console.log("SW failed",e));
+  });
+}
+  </script>
+</body>
+</html>
