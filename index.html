@@ -339,6 +339,7 @@ function SupermanApp(){
   const ringLabel=viewedDate===today?"TODAY":new Date(viewedDate+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
 
   const onDailyTouchStart=e=>{touchStartX.current=e.changedTouches[0].clientX};
+  const onDailyTouchCancel=()=>{touchStartX.current=null};
   const onDailyTouchEnd=e=>{
     if(touchStartX.current==null)return;
     const dx=e.changedTouches[0].clientX-touchStartX.current;
@@ -406,15 +407,15 @@ function SupermanApp(){
 
       <main style={st.main}>
         {activeTab==="daily"&&(
-          <div onTouchStart={onDailyTouchStart} onTouchEnd={onDailyTouchEnd} style={{animation:"fadeInUp 0.3s ease",touchAction:"pan-y"}}>
+          <div onTouchStart={onDailyTouchStart} onTouchEnd={onDailyTouchEnd} onTouchCancel={onDailyTouchCancel} style={{animation:"fadeInUp 0.3s ease",touchAction:"pan-y"}}>
             <div style={st.ringWrap}>
               <svg width="110" height="110" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/><circle cx="60" cy="60" r="52" fill="none" stroke={dayPercent===100?C.gold:C.red} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${dayPercent*3.267} 326.7`} transform="rotate(-90 60 60)" style={{transition:"stroke-dasharray 0.6s ease,stroke 0.3s ease",filter:dayPercent===100?`drop-shadow(0 0 8px ${C.gold})`:"none"}}/><text x="60" y="55" textAnchor="middle" fill={C.white} fontSize="24" fontWeight="700" fontFamily="'Bebas Neue'">{completedToday}/{totalHabits}</text><text x="60" y="72" textAnchor="middle" fill={C.gray} fontSize="10" fontFamily="'Outfit'">{ringLabel}</text></svg>
               {dayPercent===100&&<div style={st.perfectText}>⭐ PERFECT DAY ⭐</div>}
             </div>
             <div style={st.secLabel}>DAILY MISSIONS</div>
             <div style={st.hList}>
-              {dailyHabits.map(habit=>{const checked=viewedLog.habits[habit.id]||false;const rowOp=dayEditable?1:!checked?0.72:0.78;return(
-                <div key={habit.id} onClick={dayEditable?()=>toggleHabit(habit.id):undefined} style={{...st.hCard,borderColor:checked?C.gold:C.cardBorder,background:checked?"rgba(255,215,0,0.07)":C.cardBg,cursor:dayEditable?"pointer":"default",opacity:rowOp}}>
+              {dailyHabits.map(habit=>{const checked=viewedLog.habits[habit.id]||false;return(
+                <div key={habit.id} onClick={dayEditable?()=>toggleHabit(habit.id):undefined} style={{...st.hCard,borderColor:checked?C.gold:C.cardBorder,background:checked?"rgba(255,215,0,0.07)":C.cardBg,cursor:dayEditable?"pointer":"default"}}>
                   <div style={st.hLeft}><span style={{fontSize:"1.5rem",opacity:dayEditable?1:0.85}}>{habit.icon}</span><div><div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s",opacity:!dayEditable&&checked?0.5:1}}>{habit.name}{checked&&!dayEditable&&<span style={{marginLeft:"6px",opacity:0.55}}>✓</span>}</div><div style={{fontSize:"0.65rem",color:C.gray,marginTop:"1px"}}>{habit.desc}</div></div></div>
                   <div style={st.hRight}><div style={{...st.xpTag,opacity:dayEditable?1:0.55}}>+{XP_PER_HABIT}</div>{dayEditable?<div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div>:<div style={{...st.chk,borderColor:checked?`${C.gold}66`:`${C.gray}55`,background:checked?`${C.gold}35`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.85rem"}}>🔒</div>}</div>
                   {!habit.isPreset&&viewedDate===today&&<button onClick={e=>{e.stopPropagation();removeCustomHabit(habit.id)}} style={st.rmBtn}>×</button>}
@@ -423,27 +424,27 @@ function SupermanApp(){
             </div>
             <div style={st.secLabel}>WEEKLY MISSIONS</div>
             <div style={st.hList}>
-              {weeklyHabits.map(habit=>{const checked=todayLog.habits[habit.id]||false;const weekCount=getWeeklyCount(data.logs,habit.id,today);const target=habit.weeklyTarget||2;const hit=weekCount>=target;return(
-                <div key={habit.id} onClick={()=>toggleHabit(habit.id)} style={{...st.hCard,borderColor:checked?C.gold:hit?"rgba(255,215,0,0.4)":C.cardBorder,background:checked?"rgba(255,215,0,0.07)":hit?"rgba(255,215,0,0.03)":C.cardBg}}>
-                  <div style={st.hLeft}><span style={{fontSize:"1.5rem"}}>{habit.icon}</span><div>
-                    <div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s"}}>{habit.name}</div>
+              {weeklyHabits.map(habit=>{const checked=viewedLog.habits[habit.id]||false;const weekCount=getWeeklyCount(data.logs,habit.id,viewedDate);const target=habit.weeklyTarget||2;const hit=weekCount>=target;return(
+                <div key={habit.id} onClick={dayEditable?()=>toggleHabit(habit.id):undefined} style={{...st.hCard,borderColor:checked?C.gold:hit?"rgba(255,215,0,0.4)":C.cardBorder,background:checked?"rgba(255,215,0,0.07)":hit?"rgba(255,215,0,0.03)":C.cardBg,cursor:dayEditable?"pointer":"default"}}>
+                  <div style={st.hLeft}><span style={{fontSize:"1.5rem",opacity:dayEditable?1:0.85}}>{habit.icon}</span><div>
+                    <div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s",opacity:!dayEditable&&checked?0.5:1}}>{habit.name}{checked&&!dayEditable&&<span style={{marginLeft:"6px",opacity:0.55}}>✓</span>}</div>
                     <div style={{fontSize:"0.65rem",color:C.gray,marginTop:"1px"}}>{habit.desc}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:"4px",marginTop:"5px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"4px",marginTop:"5px",opacity:dayEditable?1:0.85}}>
                       {Array.from({length:target}).map((_,i)=><div key={i} style={{width:"10px",height:"10px",borderRadius:"50%",background:i<weekCount?C.gold:"rgba(255,255,255,0.08)",border:`1.5px solid ${i<weekCount?C.gold:"rgba(255,255,255,0.15)"}`,transition:"all 0.3s",boxShadow:i<weekCount?`0 0 4px ${C.gold}60`:"none"}}/>)}
                       <span style={{fontSize:"0.6rem",color:hit?C.gold:C.gray,marginLeft:"4px",fontWeight:600}}>{weekCount}/{target} this week {hit?"✓":""}</span>
                     </div>
                   </div></div>
-                  <div style={st.hRight}><div style={st.xpTag}>+{XP_PER_HABIT}</div><div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div></div>
+                  <div style={st.hRight}><div style={{...st.xpTag,opacity:dayEditable?1:0.55}}>+{XP_PER_HABIT}</div>{dayEditable?<div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div>:<div style={{...st.chk,borderColor:checked?`${C.gold}66`:`${C.gray}55`,background:checked?`${C.gold}35`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.85rem"}}>🔒</div>}</div>
                 </div>
               )})}
             </div>
-            {!showAddHabit?<button onClick={()=>setShowAddHabit(true)} style={st.addBtn}>+ ADD CUSTOM HABIT</button>:(
+            {viewedDate===today&&(!showAddHabit?<button onClick={()=>setShowAddHabit(true)} style={st.addBtn}>+ ADD CUSTOM HABIT</button>:(
               <div style={st.addForm}>
                 <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>{["✨","🎯","📚","🏃","🧘","💊","🎵","🖊️","🌱","❤️"].map(e=><button key={e} onClick={()=>setNewHabitIcon(e)} style={{width:"34px",height:"34px",borderRadius:"8px",background:"rgba(255,255,255,0.05)",fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",border:newHabitIcon===e?`2px solid ${C.gold}`:"2px solid transparent"}}>{e}</button>)}</div>
                 <input value={newHabitName} onChange={e=>setNewHabitName(e.target.value)} placeholder="Habit name..." maxLength={30} onKeyDown={e=>e.key==="Enter"&&addCustomHabit()} style={{padding:"10px 12px",borderRadius:"8px",border:`1px solid ${C.cardBorder}`,background:"rgba(255,255,255,0.05)",color:C.white,fontSize:"0.85rem",fontFamily:"'Outfit'",outline:"none"}}/>
                 <div style={{display:"flex",gap:"8px"}}><button onClick={addCustomHabit} style={{flex:1,padding:"10px",borderRadius:"8px",border:"none",background:C.red,color:"#fff",fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"2px",cursor:"pointer"}}>ADD</button><button onClick={()=>{setShowAddHabit(false);setNewHabitName("")}} style={{flex:1,padding:"10px",borderRadius:"8px",border:`1px solid ${C.gray}40`,background:"transparent",color:C.gray,fontFamily:"'Bebas Neue'",fontSize:"0.85rem",letterSpacing:"2px",cursor:"pointer"}}>CANCEL</button></div>
               </div>
-            )}
+            ))}
           </div>
         )}
 
@@ -481,7 +482,7 @@ function SupermanApp(){
           </div>
         )}
 
-        {activeTab==="calendar"&&<MonthlyCalendar logs={data.logs} totalHabits={totalHabits}/>}
+        {activeTab==="calendar"&&<MonthlyCalendar logs={data.logs} totalHabits={totalHabits} todayStr={today} onSelectDate={d=>{setViewedDate(d);setActiveTab("daily")}}/>}
 
         {activeTab==="badges"&&(
           <div style={{animation:"fadeInUp 0.3s ease"}}>
