@@ -26,7 +26,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script type="text/babel" data-type="module">
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 
 const C = {
   red:"#DC143C",darkRed:"#A00025",blue:"#0A1628",midBlue:"#1E3A8A",
@@ -113,6 +113,9 @@ const BADGES = [
 ];
 
 const getToday=()=>new Date().toISOString().split("T")[0];
+const addDays=(dateStr,delta)=>{const d=new Date(dateStr+"T12:00:00");d.setDate(d.getDate()+delta);return d.toISOString().split("T")[0]};
+const isEditable=(dateStr,todayStr)=>{if(dateStr>todayStr)return false;const d0=new Date(dateStr+"T12:00:00");const d1=new Date(todayStr+"T12:00:00");const n=Math.round((d1-d0)/86400000);return n>=0&&n<=3};
+const formatViewHeaderDate=dateStr=>new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}).toUpperCase();
 const getLevel=xp=>{for(let i=LEVELS.length-1;i>=0;i--){if(xp>=LEVELS[i])return i+1}return 1};
 const getLevelProgress=xp=>{const lv=getLevel(xp);const cur=LEVELS[lv-1]||0;const next=LEVELS[lv]||LEVELS[LEVELS.length-1]+5000;return((xp-cur)/(next-cur))*100};
 const getMondayOfWeek=dateStr=>{const d=new Date(dateStr+"T12:00:00");const day=d.getDay();const diff=d.getDate()-day+(day===0?-6:1);const mon=new Date(d);mon.setDate(diff);return mon.toISOString().split("T")[0]};
@@ -236,8 +239,8 @@ const LinksTab=()=>{
   );
 };
 
-const MonthlyCalendar=({logs,totalHabits})=>{
-  const today=getToday();const todayDate=new Date();
+const MonthlyCalendar=({logs,totalHabits,todayStr,onSelectDate})=>{
+  const today=todayStr;const todayDate=new Date();
   const[calYear,setCalYear]=useState(todayDate.getFullYear());
   const[calMonth,setCalMonth]=useState(todayDate.getMonth());
   const cells=getMonthCalendarDays(calYear,calMonth);
@@ -269,8 +272,9 @@ const MonthlyCalendar=({logs,totalHabits})=>{
           const pct=totalHabits>0?completed/totalHabits:0;const isToday=dateStr===today;const isFuture=dateStr>today;
           const dayNum=new Date(dateStr+"T12:00:00").getDate();
           const bg=isFuture?"rgba(255,255,255,0.02)":pct===0?"rgba(255,255,255,0.04)":pct<0.4?"rgba(220,20,60,0.2)":pct<0.7?"rgba(220,20,60,0.4)":pct<1?"rgba(220,20,60,0.65)":C.gold;
+          const clickable=!isFuture&&onSelectDate;
           return(
-            <div key={dateStr} title={isFuture?"":dateStr+": "+completed+"/"+totalHabits} style={{aspectRatio:"1",borderRadius:"8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:bg,border:isToday?`2px solid ${C.gold}`:"1px solid rgba(255,255,255,0.04)",boxShadow:pct===1?`0 0 8px ${C.gold}40`:isToday?`0 0 8px ${C.gold}25`:"none",opacity:isFuture?0.3:1,transition:"all 0.2s"}}>
+            <div key={dateStr} onClick={clickable?()=>onSelectDate(dateStr):undefined} role={clickable?"button":undefined} title={isFuture?"":dateStr+": "+completed+"/"+totalHabits} style={{aspectRatio:"1",borderRadius:"8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:bg,border:isToday?`2px solid ${C.gold}`:"1px solid rgba(255,255,255,0.04)",boxShadow:pct===1?`0 0 8px ${C.gold}40`:isToday?`0 0 8px ${C.gold}25`:"none",opacity:isFuture?0.3:1,transition:"all 0.2s",cursor:clickable?"pointer":"default"}}>
               <span style={{fontSize:"0.75rem",fontWeight:isToday?700:500,color:pct===1?C.blue:isFuture?"rgba(255,255,255,0.2)":C.white,fontFamily:"'Outfit'"}}>{dayNum}</span>
               {!isFuture&&pct>0&&pct<1&&<span style={{fontSize:"0.45rem",color:C.gray,marginTop:"1px"}}>{completed}/{totalHabits}</span>}
               {pct===1&&!isFuture&&<span style={{fontSize:"0.5rem",marginTop:"1px"}}>⭐</span>}
@@ -305,6 +309,9 @@ function SupermanApp(){
   const[xpPopup,setXpPopup]=useState({visible:false,amount:0});
   const[newBadge,setNewBadge]=useState(null);
   const[weekOffset,setWeekOffset]=useState(0);
+  const[today,setToday]=useState(getToday());
+  const[viewedDate,setViewedDate]=useState(getToday());
+  const touchStartX=useRef(null);
 
   useEffect(()=>{
     const saved=loadData();
@@ -319,8 +326,27 @@ function SupermanApp(){
 
   useEffect(()=>{if(loaded&&screen==="app")saveData(data)},[data,loaded,screen]);
 
-  const today=getToday();
-  const todayLog=data.logs[today]||{habits:{}};
+  useEffect(()=>{
+    const id=setInterval(()=>{
+      const n=getToday();
+      setToday(prev=>{if(n===prev)return prev;setViewedDate(v=>v===prev?n:v);return n});
+    },60000);
+    return()=>clearInterval(id);
+  },[]);
+
+  const viewedLog=data.logs[viewedDate]||{habits:{}};
+  const dayEditable=isEditable(viewedDate,today);
+  const ringLabel=viewedDate===today?"TODAY":new Date(viewedDate+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
+
+  const onDailyTouchStart=e=>{touchStartX.current=e.changedTouches[0].clientX};
+  const onDailyTouchEnd=e=>{
+    if(touchStartX.current==null)return;
+    const dx=e.changedTouches[0].clientX-touchStartX.current;
+    touchStartX.current=null;
+    if(Math.abs(dx)<50)return;
+    if(dx<0)setViewedDate(v=>addDays(v,-1));
+    else setViewedDate(v=>v>=today?v:addDays(v,1));
+  };
   const currentStreak=calculateStreak(data.logs);
   const level=getLevel(data.totalXP);
   const levelProgress=getLevelProgress(data.totalXP);
@@ -337,15 +363,16 @@ function SupermanApp(){
   useEffect(()=>{if(loaded&&screen==="app")checkBadges(profileStats)},[data.totalXP,data.logs,loaded,screen]);
 
   const toggleHabit=habitId=>{
-    const wasChecked=todayLog.habits[habitId];const xpChange=wasChecked?-XP_PER_HABIT:XP_PER_HABIT;
+    if(!isEditable(viewedDate,today))return;
+    const wasChecked=viewedLog.habits[habitId];const xpChange=wasChecked?-XP_PER_HABIT:XP_PER_HABIT;
     if(!wasChecked){setXpPopup({visible:true,amount:XP_PER_HABIT});setTimeout(()=>setXpPopup({visible:false,amount:0}),1200)}
-    setData(prev=>{const newLogs={...prev.logs};newLogs[today]={...todayLog,habits:{...todayLog.habits,[habitId]:!wasChecked}};return{...prev,logs:newLogs,totalXP:Math.max(0,prev.totalXP+xpChange)}});
+    setData(prev=>{const cur=prev.logs[viewedDate]||{habits:{}};const newLogs={...prev.logs};newLogs[viewedDate]={...cur,habits:{...cur.habits,[habitId]:!wasChecked}};return{...prev,logs:newLogs,totalXP:Math.max(0,prev.totalXP+xpChange)}});
   };
 
   const addCustomHabit=()=>{if(!newHabitName.trim())return;setData(prev=>({...prev,habits:[...prev.habits,{id:`custom_${Date.now()}`,name:newHabitName.trim(),icon:newHabitIcon,desc:"Custom goal",type:"daily",isPreset:false}]}));setNewHabitName("");setNewHabitIcon("✨");setShowAddHabit(false)};
   const removeCustomHabit=id=>setData(prev=>({...prev,habits:prev.habits.filter(h=>h.id!==id)}));
 
-  const completedToday=Object.values(todayLog.habits).filter(v=>v).length;
+  const completedToday=Object.values(viewedLog.habits).filter(v=>v).length;
   const totalHabits=data.habits.length;
   const dayPercent=totalHabits>0?(completedToday/totalHabits)*100:0;
 
@@ -362,7 +389,14 @@ function SupermanApp(){
 
       <header style={st.header}>
         <div style={st.headerTop}>
-          <div><div style={st.greeting}>{new Date().getHours()<12?"GOOD MORNING":new Date().getHours()<17?"GOOD AFTERNOON":"GOOD EVENING"}</div><h1 style={st.heroName}>SUPERMAN</h1></div>
+          <div style={{flex:1,minWidth:0}}>
+            {viewedDate===today?(
+              <><div style={st.greeting}>{new Date().getHours()<12?"GOOD MORNING":new Date().getHours()<17?"GOOD AFTERNOON":"GOOD EVENING"}</div><h1 style={st.heroName}>SUPERMAN</h1></>
+            ):(
+              <><div style={st.greeting}>VIEWING</div><h1 style={{...st.heroName,fontSize:"1.45rem",lineHeight:1.15,marginBottom:"6px"}}>{formatViewHeaderDate(viewedDate)}</h1>
+              <button type="button" onClick={()=>setViewedDate(today)} style={{fontFamily:"'Bebas Neue'",fontSize:"0.72rem",letterSpacing:"2px",padding:"6px 12px",borderRadius:"8px",border:`1px solid ${C.gold}55`,background:"rgba(255,215,0,0.08)",color:C.gold,cursor:"pointer"}}>← BACK TO TODAY</button></>
+            )}
+          </div>
           <div style={st.streakBox}><span style={{fontSize:"1.2rem"}}>🔥</span><span style={st.streakNum}>{currentStreak}</span><span style={st.streakLbl}>DAY{currentStreak!==1?"S":""}</span></div>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:"5px"}}><span style={st.levelText}>LEVEL {level}</span><span style={st.xpText}>{data.totalXP} XP</span></div>
@@ -372,18 +406,18 @@ function SupermanApp(){
 
       <main style={st.main}>
         {activeTab==="daily"&&(
-          <div style={{animation:"fadeInUp 0.3s ease"}}>
+          <div onTouchStart={onDailyTouchStart} onTouchEnd={onDailyTouchEnd} style={{animation:"fadeInUp 0.3s ease",touchAction:"pan-y"}}>
             <div style={st.ringWrap}>
-              <svg width="110" height="110" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/><circle cx="60" cy="60" r="52" fill="none" stroke={dayPercent===100?C.gold:C.red} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${dayPercent*3.267} 326.7`} transform="rotate(-90 60 60)" style={{transition:"stroke-dasharray 0.6s ease,stroke 0.3s ease",filter:dayPercent===100?`drop-shadow(0 0 8px ${C.gold})`:"none"}}/><text x="60" y="55" textAnchor="middle" fill={C.white} fontSize="24" fontWeight="700" fontFamily="'Bebas Neue'">{completedToday}/{totalHabits}</text><text x="60" y="72" textAnchor="middle" fill={C.gray} fontSize="10" fontFamily="'Outfit'">TODAY</text></svg>
+              <svg width="110" height="110" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/><circle cx="60" cy="60" r="52" fill="none" stroke={dayPercent===100?C.gold:C.red} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${dayPercent*3.267} 326.7`} transform="rotate(-90 60 60)" style={{transition:"stroke-dasharray 0.6s ease,stroke 0.3s ease",filter:dayPercent===100?`drop-shadow(0 0 8px ${C.gold})`:"none"}}/><text x="60" y="55" textAnchor="middle" fill={C.white} fontSize="24" fontWeight="700" fontFamily="'Bebas Neue'">{completedToday}/{totalHabits}</text><text x="60" y="72" textAnchor="middle" fill={C.gray} fontSize="10" fontFamily="'Outfit'">{ringLabel}</text></svg>
               {dayPercent===100&&<div style={st.perfectText}>⭐ PERFECT DAY ⭐</div>}
             </div>
             <div style={st.secLabel}>DAILY MISSIONS</div>
             <div style={st.hList}>
-              {dailyHabits.map(habit=>{const checked=todayLog.habits[habit.id]||false;return(
-                <div key={habit.id} onClick={()=>toggleHabit(habit.id)} style={{...st.hCard,borderColor:checked?C.gold:C.cardBorder,background:checked?"rgba(255,215,0,0.07)":C.cardBg}}>
-                  <div style={st.hLeft}><span style={{fontSize:"1.5rem"}}>{habit.icon}</span><div><div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s"}}>{habit.name}</div><div style={{fontSize:"0.65rem",color:C.gray,marginTop:"1px"}}>{habit.desc}</div></div></div>
-                  <div style={st.hRight}><div style={st.xpTag}>+{XP_PER_HABIT}</div><div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div></div>
-                  {!habit.isPreset&&<button onClick={e=>{e.stopPropagation();removeCustomHabit(habit.id)}} style={st.rmBtn}>×</button>}
+              {dailyHabits.map(habit=>{const checked=viewedLog.habits[habit.id]||false;const rowOp=dayEditable?1:!checked?0.72:0.78;return(
+                <div key={habit.id} onClick={dayEditable?()=>toggleHabit(habit.id):undefined} style={{...st.hCard,borderColor:checked?C.gold:C.cardBorder,background:checked?"rgba(255,215,0,0.07)":C.cardBg,cursor:dayEditable?"pointer":"default",opacity:rowOp}}>
+                  <div style={st.hLeft}><span style={{fontSize:"1.5rem",opacity:dayEditable?1:0.85}}>{habit.icon}</span><div><div style={{fontSize:"0.85rem",fontWeight:600,color:checked?C.gold:C.white,transition:"color 0.2s",opacity:!dayEditable&&checked?0.5:1}}>{habit.name}{checked&&!dayEditable&&<span style={{marginLeft:"6px",opacity:0.55}}>✓</span>}</div><div style={{fontSize:"0.65rem",color:C.gray,marginTop:"1px"}}>{habit.desc}</div></div></div>
+                  <div style={st.hRight}><div style={{...st.xpTag,opacity:dayEditable?1:0.55}}>+{XP_PER_HABIT}</div>{dayEditable?<div style={{...st.chk,borderColor:checked?C.gold:C.gray,background:checked?C.gold:"transparent"}}>{checked&&<span style={{color:C.blue,fontSize:"0.9rem",fontWeight:900}}>✓</span>}</div>:<div style={{...st.chk,borderColor:checked?`${C.gold}66`:`${C.gray}55`,background:checked?`${C.gold}35`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.85rem"}}>🔒</div>}</div>
+                  {!habit.isPreset&&viewedDate===today&&<button onClick={e=>{e.stopPropagation();removeCustomHabit(habit.id)}} style={st.rmBtn}>×</button>}
                 </div>
               )})}
             </div>
